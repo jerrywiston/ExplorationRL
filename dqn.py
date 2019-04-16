@@ -47,13 +47,12 @@ class DeepQNetwork:
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
         self.cost_his = []
-        self.cost_model = []
 
     def _build_net(self):
         # inputs
-        self.s = tf.placeholder(tf.float32, [None, self.feature_size[0], self.feature_size[1], self.feature_size[2]], name="s")
+        self.s1 = tf.placeholder(tf.float32, [None, self.feature_size[0], self.feature_size[1], self.feature_size[2]], name="s1")
         self.s2 = tf.placeholder(tf.float32, [None, self.sensor_size], name="s2")
-        self.s_ = tf.placeholder(tf.float32, [None, self.feature_size[0], self.feature_size[1], self.feature_size[2]], name="s_")
+        self.s1_ = tf.placeholder(tf.float32, [None, self.feature_size[0], self.feature_size[1], self.feature_size[2]], name="s_")
         self.s2_ = tf.placeholder(tf.float32, [None, self.sensor_size], name="s2_")
         self.r = tf.placeholder(tf.float32, [None, ], name='r')  # input Reward
         self.a = tf.placeholder(tf.int32, [None, ], name='a')  # input Action
@@ -61,14 +60,14 @@ class DeepQNetwork:
         
         # ------------------ build Q Network ------------------
         # Evaluate Net
-        self.q_eval = models.QNetwork(self.s, self.s2, self.n_actions, 'Qnet_eval', reuse=False)
+        self.q_eval = models.QNetwork(self.s1, self.s2, self.n_actions, 'Qnet_eval', reuse=False)
 
         with tf.variable_scope('q_eval'):
             a_indices = tf.stack([tf.range(tf.shape(self.a)[0], dtype=tf.int32), self.a], axis=1)
             self.q_eval_wrt_a = tf.gather_nd(params=self.q_eval, indices=a_indices)  # shape=(None, )
 
         # Target Net
-        self.q_next = models.QNetwork(self.s_, self.s2_, self.n_actions, 'Qnet_target', reuse=False)
+        self.q_next = models.QNetwork(self.s1_, self.s2_, self.n_actions, 'Qnet_target', reuse=False)
         
         with tf.variable_scope("q_target"):
             q_target = self.r + self.end * self.gamma * tf.reduce_max(self.q_next, axis=1, name='Qmax_s_') # shape=(None, )
@@ -81,21 +80,20 @@ class DeepQNetwork:
 
         with tf.variable_scope('train'):
             self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
-            #self._train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
     
     def init_memory(self):
         self.memory = {
-            "s": np.zeros((self.memory_size, self.feature_size[0], self.feature_size[1], self.feature_size[2])),
+            "s1": np.zeros((self.memory_size, self.feature_size[0], self.feature_size[1], self.feature_size[2])),
             "s2": np.zeros((self.memory_size, self.sensor_size)),
             "a": np.zeros((self.memory_size)),
             "r": np.zeros((self.memory_size)),
-            "s_": np.zeros((self.memory_size, self.feature_size[0], self.feature_size[1], self.feature_size[2])),
+            "s1_": np.zeros((self.memory_size, self.feature_size[0], self.feature_size[1], self.feature_size[2])),
             "s2_": np.zeros((self.memory_size, self.sensor_size)),
             "end": np.zeros((self.memory_size)),
             "error": np.zeros((self.memory_size)),
         }
 
-    def store_transition(self, s, s2, a, r, s_, s2_, end):
+    def store_transition(self, s1, s2, a, r, s1_, s2_, end):
         if not hasattr(self, 'memory_counter'):
             self.memory_counter = 0
         if self.memory_counter <= self.memory_size:
@@ -103,17 +101,17 @@ class DeepQNetwork:
         else:
             index = self.memory_counter % self.memory_size
             #index = np.argmin(self.memory["error"])
-        self.memory["s"][index] = s
+        self.memory["s1"][index] = s1
         self.memory["s2"][index] = s2
         self.memory["a"][index] = a
         self.memory["r"][index] = r
-        self.memory["s_"][index] = s_
+        self.memory["s1_"][index] = s1_
         self.memory["s2_"][index] = s2_
         self.memory["end"][index] = end
         self.memory_counter += 1
     
-    def choose_action(self, s, s2):
-        actions_value = self.sess.run(self.q_eval, feed_dict={self.s: np.expand_dims(s, 0), self.s2: np.expand_dims(s2, 0)})
+    def choose_action(self, s1, s2):
+        actions_value = self.sess.run(self.q_eval, feed_dict={self.s1: np.expand_dims(s1, 0), self.s2: np.expand_dims(s2, 0)})
         if np.random.uniform() < self.epsilon:
             action = np.argmax(actions_value)
         else:
@@ -138,11 +136,11 @@ class DeepQNetwork:
         _, cost, tderr = self.sess.run(
             [self._train_op, self.loss, self.td_error],
             feed_dict={
-                self.s: self.memory["s"][sample_index], 
+                self.s1: self.memory["s1"][sample_index], 
                 self.s2: self.memory["s2"][sample_index],
                 self.a: self.memory["a"][sample_index],
                 self.r: self.memory["r"][sample_index],
-                self.s_: self.memory["s_"][sample_index],
+                self.s1_: self.memory["s1_"][sample_index],
                 self.s2_: self.memory["s2_"][sample_index],
                 self.end: self.memory["end"][sample_index],
             })
@@ -159,10 +157,3 @@ class DeepQNetwork:
         self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
         self.learn_step_counter += 1
         return cost
-
-    def plot_cost(self):
-        import matplotlib.pyplot as plt
-        plt.plot(np.arange(len(self.cost_model)), np.log(self.cost_model))
-        plt.ylabel('Cost')
-        plt.xlabel('training steps')
-        plt.show()

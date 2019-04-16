@@ -36,6 +36,7 @@ def PlotResult(fname, color, smooth=20):
     #plt.plot(slist, 'r')
     errorfill(range(len(slist)), np.array(slist), np.array(vlist), color=color)
 
-PlotResult("rec_map_sensor_baseline.json", 'r')
-PlotResult("rec_map_baseline.json", 'b')
+#PlotResult("rec_map_sensor_baseline.json", 'r')
+#PlotResult("rec_map_baseline.json", 'b')
+PlotResult("rec.json", 'r')
 plt.show()

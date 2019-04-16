@@ -69,17 +69,6 @@ class Bot2DEnv:
         m = m.astype(float) / 255.
         return m
 
-    def RandInit(self, map_path):
-        mm = self.Image2Map(map_path)
-        x = mm.shape[1]
-        y = mm.shape[0]
-        bot_pos = np.array([np.random.randint(x), np.random.randint(y), np.random.randint(360)])
-
-        while mm[bot_pos[1], bot_pos[0]] < 0.9:
-            bot_pos = np.array([np.random.randint(x), np.random.randint(y), np.random.randint(360)])
-        return bot_pos
-
-
 DISCRETE = False
 RENDER = True
 if __name__ == '__main__':

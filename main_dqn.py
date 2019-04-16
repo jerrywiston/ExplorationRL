@@ -8,7 +8,7 @@ seq_size = 3
 memory_size = 1000
 env = Bot2DWrapper.Bot2DEnv(obs_size=64, 
                             grid_size=3, 
-                            map_path="Image/map5.png")
+                            map_path="Image/map7.png")
 
 RL = dqn.DeepQNetwork(n_actions=3,
                   feature_size=[64, 64, seq_size],
@@ -62,9 +62,9 @@ if __name__ == '__main__':
             if done == 0 and step >= seq_size:
                 reward_rec.append(eps_reward)
                 break
-            if step >= 800:
+            if step >= 1000:
                 break
     
-    f = open("recccc.json", "w")
+    f = open("rec.json", "w")
     json.dump(reward_rec, f)
 
